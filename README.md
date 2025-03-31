@@ -1,5 +1,5 @@
 # Husformer
-This repository contains the source code for our paper: "Husformer: A Multi-Modal Transformer for Multi-Modal Human State Recognition".
+This repository contains the source code for paper: "Husformer: A Multi-Modal Transformer for Multi-Modal Human State Recognition".
 For more details, please refer to [our paper](https://arxiv.org/abs/2209.15182).
 
 
@@ -19,10 +19,6 @@ Human state recognition is a critical topic due to its pervasive and crucial app
 <img src="/figures/CMAT.png" width="800" />
 </div>  
 
-
-
-
-
 ## Usage
 
 ### Prerequisites
@@ -36,7 +32,6 @@ Human state recognition is a critical topic due to its pervasive and crucial app
 (The code was tested in Ubuntu 18.04 with Python 3.8.)
 
 ### Datasets
-
 
 [MOCAS](https://polytechnic.purdue.edu/ahmrs/mocas-dataset) | [DEAP](https://www.eecs.qmul.ac.uk/mmv/datasets/deap/download.html) |[WESAD](https://archive.ics.uci.edu/ml/datasets/WESAD+%28Wearable+Stress+and+Affect+Detection%29) | [Cogload](https://gitlab.fri.uni-lj.si/lrk/mobile-cogload-dataset)
 
