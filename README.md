@@ -1,6 +1,6 @@
 # Husformer
 This repository contains the source code for paper: "Husformer: A Multi-Modal Transformer for Multi-Modal Human State Recognition".
-For more details, please refer to [our paper](https://arxiv.org/abs/2209.15182).
+For more details, please refer to [the paper](https://arxiv.org/abs/2209.15182).
 
 
 ## Abstract
