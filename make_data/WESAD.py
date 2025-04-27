@@ -4,12 +4,12 @@ from sklearn.model_selection import train_test_split
 
 def data_ready(pkl2):
     # Load signals
-    modality1 = pkl2[b'signal'][b'chest'][b'EDA']
+    modality1 = pkl2[b'signal'][b'chest'][b'GSR']
     modality2 = pkl2[b'signal'][b'wrist'][b'BVP']
     modality3 = pkl2[b'signal'][b'chest'][b'EMG']
     modality4 = pkl2[b'signal'][b'chest'][b'ECG']
     modality5 = pkl2[b'signal'][b'chest'][b'Resp']
-    modality6 = pkl2[b'signal'][b'wrist'][b'EDA']
+    modality6 = pkl2[b'signal'][b'wrist'][b'GSR']
     label = pkl2[b'label']
     subjects = np.array(pkl2[b'subject'])  # <-- Subject IDs
 
