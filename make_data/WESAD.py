@@ -1,6 +1,6 @@
 import pickle
 import numpy as np
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, train_test_split
 
 def data_ready(pkl2):
     modality1 = pkl2[b'signal'][b'chest'][b'GSR']
@@ -28,25 +28,34 @@ def data_ready(pkl2):
         elif label[i] == 6: label[i] = 0
         elif label[i] == 7: label[i] = 0
 
-    for j in range(0, modality1.shape[0], 700):
-        modality11.append(modality1[j:j+700].reshape(50,14))
-        modality31.append(modality3[j:j+700].reshape(50,14))
-        modality41.append(modality4[j:j+700].reshape(50,14))
-        modality51.append(modality5[j:j+700].reshape(50,14))
-        label1.append(label[j:j+700])
-        subjects1.append(subjects[j])
+    # Iterate over unique subjects
+    unique_subjects = np.unique(subjects)
+    for subj in unique_subjects:
+        subj_idx = np.where(subjects == subj)[0]
+        mod1_subj = modality1[subj_idx]
+        mod3_subj = modality3[subj_idx]
+        mod4_subj = modality4[subj_idx]
+        mod5_subj = modality5[subj_idx]
+        mod6_subj = modality6[subj_idx]
+        labels_subj = label[subj_idx]
 
-    for j in range(0, modality2.shape[0], 64):
-        modality21.append(modality2[j:j+64].reshape(16,4))
+        # Split into 700-sample chunks (or adjust based on your dataset structure)
+        for j in range(0, mod1_subj.shape[0], 700):
+            modality11.append(mod1_subj[j:j+700].reshape(50, 14))
+            modality31.append(mod3_subj[j:j+700].reshape(50, 14))
+            modality41.append(mod4_subj[j:j+700].reshape(50, 14))
+            modality51.append(mod5_subj[j:j+700].reshape(50, 14))
+            modality61.append(mod6_subj[j:j+700].reshape(50, 14))
+            label1.append(labels_subj[j:j+700])
+            subjects1.append(subj)
 
-    for j in range(0, modality6.shape[0], 4):
-        modality61.append(modality6[j:j+4].reshape(1,4))
-
+    # Remove any chunks with multiple labels (they have mixed labels)
     invalid_index = [k for k in range(len(label1)) if len(set(label1[k])) != 1]
     for x in reversed(invalid_index):
         for arr in [modality11, modality21, modality31, modality41, modality51, modality61, label1, subjects1]:
             arr.pop(x)
 
+    # Create clean sets of data (no mixed labels)
     label_new = [[l[0]] for l in label1]
     nonzero_idx = [idx for idx, l in enumerate(label_new) if l != [0]]
 
@@ -61,6 +70,7 @@ def data_ready(pkl2):
         subjects2.append(subjects1[x])
 
     return modality12, modality22, modality32, modality42, modality52, modality62, label2, subjects2, len(modality12)
+
 
 def pkl_make(modality1, modality2, modality3, modality4, modality5, modality6, label, train_idx, val_idx, test_idx, pkl1, fold_idx):
     data = {
@@ -96,6 +106,7 @@ def pkl_make(modality1, modality2, modality3, modality4, modality5, modality6, l
     pickle.dump(data, pkl1)
     pkl1.close()
 
+
 def WESAD_10fold_cv(modality1, modality2, modality3, modality4, modality5, modality6, label, subjects):
     unique_subjects = np.unique(subjects)
     kf = KFold(n_splits=10, shuffle=True, random_state=42)
@@ -115,8 +126,9 @@ def WESAD_10fold_cv(modality1, modality2, modality3, modality4, modality5, modal
 
         print(f"Saved fold {fold_idx}: Train={len(train_idx)}, Val={len(val_idx)}, Test={len(test_idx)}")
 
+
 if __name__ == '__main__':
-    with open('/content/drive/MyDrive/Multimodal/Husformer/WESAD_list.txt','r') as f:
+    with open('/content/drive/MyDrive/Multimodal/Husformer/WESAD_list.txt', 'r') as f:
         pkl2 = pickle.load(f)
 
     modality1, modality2, modality3, modality4, modality5, modality6, label, subjects, _ = data_ready(pkl2)
