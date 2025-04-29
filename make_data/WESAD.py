@@ -1,9 +1,8 @@
 import pickle
 import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold
 
 def data_ready(pkl2):
-    # Load signals
     modality1 = pkl2[b'signal'][b'chest'][b'GSR']
     modality2 = pkl2[b'signal'][b'wrist'][b'BVP']
     modality3 = pkl2[b'signal'][b'chest'][b'EMG']
@@ -11,16 +10,14 @@ def data_ready(pkl2):
     modality5 = pkl2[b'signal'][b'chest'][b'Resp']
     modality6 = pkl2[b'signal'][b'wrist'][b'GSR']
     label = pkl2[b'label']
-    subjects = np.array(pkl2[b'subject'])  # <-- Subject IDs
+    subjects = np.array(pkl2[b'subject'])
 
-    # Initialize arrays
     modality11, modality21, modality31, modality41, modality51, modality61, label1 = [], [], [], [], [], [], []
     subjects1 = []
 
     modality12, modality22, modality32, modality42, modality52, modality62, label2 = [], [], [], [], [], [], []
     subjects2 = []
 
-    # Adjust labels
     for i in range(len(label)):
         if label[i] == 0: label[i] = 0
         elif label[i] == 1: label[i] = 2
@@ -31,7 +28,6 @@ def data_ready(pkl2):
         elif label[i] == 6: label[i] = 0
         elif label[i] == 7: label[i] = 0
 
-    # Chunk signals
     for j in range(0, modality1.shape[0], 700):
         modality11.append(modality1[j:j+700].reshape(50,14))
         modality31.append(modality3[j:j+700].reshape(50,14))
@@ -46,27 +42,15 @@ def data_ready(pkl2):
     for j in range(0, modality6.shape[0], 4):
         modality61.append(modality6[j:j+4].reshape(1,4))
 
-    # Remove inconsistent labels
-    invalid_index = []
-    for k in range(len(label1)):
-        if len(set(label1[k])) != 1:
-            invalid_index.append(k)
-    invalid_index.reverse()
-    for x in invalid_index:
-        modality11.pop(x)
-        modality21.pop(x)
-        modality31.pop(x)
-        modality41.pop(x)
-        modality51.pop(x)
-        modality61.pop(x)
-        label1.pop(x)
-        subjects1.pop(x)
+    invalid_index = [k for k in range(len(label1)) if len(set(label1[k])) != 1]
+    for x in reversed(invalid_index):
+        for arr in [modality11, modality21, modality31, modality41, modality51, modality61, label1, subjects1]:
+            arr.pop(x)
 
-    # Keep only non-zero labels
     label_new = [[l[0]] for l in label1]
-    zeros = [idx for idx, l in enumerate(label_new) if l != [0]]
+    nonzero_idx = [idx for idx, l in enumerate(label_new) if l != [0]]
 
-    for x in zeros:
+    for x in nonzero_idx:
         modality12.append(modality11[x])
         modality22.append(modality21[x])
         modality32.append(modality31[x])
@@ -76,12 +60,9 @@ def data_ready(pkl2):
         label2.append(label_new[x])
         subjects2.append(subjects1[x])
 
-    index = len(modality12)
-
-    return modality12, modality22, modality32, modality42, modality52, modality62, label2, subjects2, index
+    return modality12, modality22, modality32, modality42, modality52, modality62, label2, subjects2, len(modality12)
 
 def pkl_make(modality1, modality2, modality3, modality4, modality5, modality6, label, train_idx, val_idx, test_idx, pkl1, fold_idx):
-    # Create dictionary to save
     data = {
         'train': {
             'modality1': [modality1[i] for i in train_idx],
@@ -115,46 +96,28 @@ def pkl_make(modality1, modality2, modality3, modality4, modality5, modality6, l
     pickle.dump(data, pkl1)
     pkl1.close()
 
-def WESAD(array_len, modality1, modality2, modality3, modality4, modality5, modality6, label, subjects):
+def WESAD_10fold_cv(modality1, modality2, modality3, modality4, modality5, modality6, label, subjects):
     unique_subjects = np.unique(subjects)
-    
-    for i in range(10):  # 10 random folds
-        # Split subjects
-        train_subjects, temp_subjects = train_test_split(unique_subjects, test_size=0.3, random_state=i)
-        val_subjects, test_subjects = train_test_split(temp_subjects, test_size=0.66, random_state=i)
-        
-        # Collect sample indices based on subject split
-        train_idx = [idx for idx, subj in enumerate(subjects) if subj in train_subjects]
-        val_idx = [idx for idx, subj in enumerate(subjects) if subj in val_subjects]
-        test_idx = [idx for idx, subj in enumerate(subjects) if subj in test_subjects]
+    kf = KFold(n_splits=10, shuffle=True, random_state=42)
 
-        # Save each fold
-        pkl1 = open(f'{i}_3_classes_subject_independent.pkl','wb')
-        pkl_make(modality1, modality2, modality3, modality4, modality5, modality6, label, 
-                 np.array(train_idx), np.array(val_idx), np.array(test_idx), pkl1, i)
-    return
+    for fold_idx, (train_val_idx, test_idx) in enumerate(kf.split(unique_subjects)):
+        train_val_subjects = unique_subjects[train_val_idx]
+        test_subjects = unique_subjects[test_idx]
 
-def WESAD_merge(array, modality11, modality21, modality31, modality41, modality51, modality61, label1, subjects):
-    unique_subjects = np.unique(subjects)
-    
-    # Split subjects
-    train_subjects, temp_subjects = train_test_split(unique_subjects, test_size=0.3, random_state=42)
-    val_subjects, test_subjects = train_test_split(temp_subjects, test_size=0.66, random_state=42)
-    
-    train_idx = [idx for idx, subj in enumerate(subjects) if subj in train_subjects]
-    val_idx = [idx for idx, subj in enumerate(subjects) if subj in val_subjects]
-    test_idx = [idx for idx, subj in enumerate(subjects) if subj in test_subjects]
+        train_subjects, val_subjects = train_test_split(train_val_subjects, test_size=0.2, random_state=fold_idx)
 
-    pkl1 = open('merged_dataset.pkl','wb')
-    pkl_make(modality11, modality21, modality31, modality41, modality51, modality61, label1, train_idx, val_idx, test_idx, pkl1, 0)
+        train_idx = [i for i, s in enumerate(subjects) if s in train_subjects]
+        val_idx = [i for i, s in enumerate(subjects) if s in val_subjects]
+        test_idx = [i for i, s in enumerate(subjects) if s in test_subjects]
 
-    print(f"Dataset merged and split into Train: {len(train_idx)}, Validation: {len(val_idx)}, Test: {len(test_idx)}. Saved as 'merged_dataset.pkl'.")
-    return
+        pkl1 = open(f'fold_{fold_idx}_3_classes_subject_independent.pkl', 'wb')
+        pkl_make(modality1, modality2, modality3, modality4, modality5, modality6, label, train_idx, val_idx, test_idx, pkl1, fold_idx)
 
+        print(f"Saved fold {fold_idx}: Train={len(train_idx)}, Val={len(val_idx)}, Test={len(test_idx)}")
 
 if __name__ == '__main__':
-    with open('path_to_your_WESAD_data.pkl', 'rb') as f:
+    with open('/content/drive/MyDrive/Multimodal/Husformer/WESAD_list.txt','r') as f:
         pkl2 = pickle.load(f)
 
-    modality1, modality2, modality3, modality4, modality5, modality6, label, subjects, array_len = data_ready(pkl2)
-    WESAD_merge(array_len, modality1, modality2, modality3, modality4, modality5, modality6, label, subjects)
+    modality1, modality2, modality3, modality4, modality5, modality6, label, subjects, _ = data_ready(pkl2)
+    WESAD_10fold_cv(modality1, modality2, modality3, modality4, modality5, modality6, label, subjects)
