@@ -1,6 +1,6 @@
-import pickle
 import numpy as np
-from sklearn.model_selection import KFold, train_test_split
+import pickle
+import csv
 
 def data_ready(pkl2):
     modality1 = pkl2[b'signal'][b'chest'][b'GSR']
@@ -9,57 +9,84 @@ def data_ready(pkl2):
     modality4 = pkl2[b'signal'][b'chest'][b'ECG']
     modality5 = pkl2[b'signal'][b'chest'][b'Resp']
     modality6 = pkl2[b'signal'][b'wrist'][b'GSR']
+
     label = pkl2[b'label']
-    subjects = np.array(pkl2[b'subject'])
 
-    modality11, modality21, modality31, modality41, modality51, modality61, label1 = [], [], [], [], [], [], []
-    subjects1 = []
+    modality11 = []
+    modality21 = []
+    modality31 = []
+    modality41 = []
+    modality41 = []
+    modality51 = []
+    modality61 = []
+    label1 = []
 
-    modality12, modality22, modality32, modality42, modality52, modality62, label2 = [], [], [], [], [], [], []
-    subjects2 = []
+    modality12 = []
+    modality22 = []
+    modality32 = []
+    modality42 = []
+    modality52 = []
+    modality62 = []
+    label2 = []
 
     for i in range(len(label)):
-        if label[i] == 0: label[i] = 0
-        elif label[i] == 1: label[i] = 2
-        elif label[i] == 2: label[i] = -1
-        elif label[i] == 3: label[i] = 1
-        elif label[i] == 4: label[i] = 0
-        elif label[i] == 5: label[i] = 0
-        elif label[i] == 6: label[i] = 0
-        elif label[i] == 7: label[i] = 0
+        if label[i] == 0:
+            label[i] =0
+        elif label[i] == 1:
+            label[i] =2
+        elif label[i] == 2:
+            label[i] =-1
+        elif label[i] == 3:
+            label[i] =1
+        elif label[i] == 4:
+            label[i] =0
+        elif label[i] == 5:
+            label[i] =0
+        elif label[i] == 6:
+            label[i] =0
+        elif label[i] == 7:
+            label[i] =0
+    
+    for j in range(0,modality1.shape[0],700):
+        modality11.append(modality1[j:j+700].reshape(50,14))
+        modality31.append(modality3[j:j+700].reshape(50,14))
+        modality41.append(modality3[j:j+700].reshape(50,14))
+        modality51.append(modality3[j:j+700].reshape(50,14))
+        label1.append(label[j:j+700])
 
-    # Iterate over unique subjects
-    unique_subjects = np.unique(subjects)
-    for subj in unique_subjects:
-        subj_idx = np.where(subjects == subj)[0]
-        mod1_subj = modality1[subj_idx]
-        mod3_subj = modality3[subj_idx]
-        mod4_subj = modality4[subj_idx]
-        mod5_subj = modality5[subj_idx]
-        mod6_subj = modality6[subj_idx]
-        labels_subj = label[subj_idx]
+    for j in range(0,modality2.shape[0],64):
+        modality21.append(modality2[j:j+64].reshape(16,4))
 
-        # Split into 700-sample chunks (or adjust based on your dataset structure)
-        for j in range(0, mod1_subj.shape[0], 700):
-            modality11.append(mod1_subj[j:j+700].reshape(50, 14))
-            modality31.append(mod3_subj[j:j+700].reshape(50, 14))
-            modality41.append(mod4_subj[j:j+700].reshape(50, 14))
-            modality51.append(mod5_subj[j:j+700].reshape(50, 14))
-            modality61.append(mod6_subj[j:j+700].reshape(50, 14))
-            label1.append(labels_subj[j:j+700])
-            subjects1.append(subj)
+    for j in range(0,modality4.shape[0],4):
+        modality61.append(modality4[j:j+4].reshape(1,4))
 
-    # Remove any chunks with multiple labels (they have mixed labels)
-    invalid_index = [k for k in range(len(label1)) if len(set(label1[k])) != 1]
-    for x in reversed(invalid_index):
-        for arr in [modality11, modality21, modality31, modality41, modality51, modality61, label1, subjects1]:
-            arr.pop(x)
+    invalid_index = []
+    for k in range(len(label1)):
+        b = list(set(label1[k]))
+        if len(b) != 1:
+            invalid_index.append(k)
 
-    # Create clean sets of data (no mixed labels)
-    label_new = [[l[0]] for l in label1]
-    nonzero_idx = [idx for idx, l in enumerate(label_new) if l != [0]]
+    invalid_index.reverse()
 
-    for x in nonzero_idx:
+    for x in invalid_index:
+        modality11.pop(x)
+        modality21.pop(x)
+        modality31.pop(x)
+        modality41.pop(x)
+        label1.pop(x)
+    label_new = []
+    zeros = []
+
+    for y in range(len(label1)):
+        label_new.append([label1[y][0]])
+        
+    #print(label_new)
+
+    for z in range(len(label_new)):
+        if label_new[z] != [0]:
+            zeros.append(z)
+
+    for x in zeros:
         modality12.append(modality11[x])
         modality22.append(modality21[x])
         modality32.append(modality31[x])
@@ -67,69 +94,156 @@ def data_ready(pkl2):
         modality52.append(modality51[x])
         modality62.append(modality61[x])
         label2.append(label_new[x])
-        subjects2.append(subjects1[x])
+    index = len(modality12)
+    return modality12,modality22,modality32,modality42, modality52, modality62, label2,index
 
-    return modality12, modality22, modality32, modality42, modality52, modality62, label2, subjects2, len(modality12)
+def pkl_make(modality1,modality2,modality3,modality4, modality5, modality6, label,train_id,val_id,test_id,pkl,epoch):
+    print('data over'+ str(epoch))
+    modality1_train =  np.array(modality1)[train_id]
+    modality1_val = np.array(modality1)[val_id]
+    modality1_test = np.array(modality1)[test_id]
 
+    modality2_train = np.array(modality2)[train_id]
+    modality2_val = np.array(modality2)[val_id]
+    modality2_test = np.array(modality2)[test_id]
 
-def pkl_make(modality1, modality2, modality3, modality4, modality5, modality6, label, train_idx, val_idx, test_idx, pkl1, fold_idx):
-    data = {
-        'train': {
-            'modality1': [modality1[i] for i in train_idx],
-            'modality2': [modality2[i] for i in train_idx],
-            'modality3': [modality3[i] for i in train_idx],
-            'modality4': [modality4[i] for i in train_idx],
-            'modality5': [modality5[i] for i in train_idx],
-            'modality6': [modality6[i] for i in train_idx],
-            'label': [label[i] for i in train_idx]
-        },
-        'val': {
-            'modality1': [modality1[i] for i in val_idx],
-            'modality2': [modality2[i] for i in val_idx],
-            'modality3': [modality3[i] for i in val_idx],
-            'modality4': [modality4[i] for i in val_idx],
-            'modality5': [modality5[i] for i in val_idx],
-            'modality6': [modality6[i] for i in val_idx],
-            'label': [label[i] for i in val_idx]
-        },
-        'test': {
-            'modality1': [modality1[i] for i in test_idx],
-            'modality2': [modality2[i] for i in test_idx],
-            'modality3': [modality3[i] for i in test_idx],
-            'modality4': [modality4[i] for i in test_idx],
-            'modality5': [modality5[i] for i in test_idx],
-            'modality6': [modality6[i] for i in test_idx],
-            'label': [label[i] for i in test_idx]
-        },
-        'fold': fold_idx
-    }
-    pickle.dump(data, pkl1)
-    pkl1.close()
+    modality3_train = np.array(modality3)[train_id]
+    modality3_val = np.array(modality3)[val_id]
+    modality3_test = np.array(modality3)[test_id]
+
+    modality4_train = np.array(modality4)[train_id]
+    modality4_val = np.array(modality4)[val_id]
+    modality4_test = np.array(modality4)[test_id]
+
+    modality5_train = np.array(modality5)[train_id]
+    modality5_val = np.array(modality5)[val_id]
+    modality5_test = np.array(modality5)[test_id]
+
+    modality6_train = np.array(modality6)[train_id]
+    modality6_val = np.array(modality6)[val_id]
+    modality6_test = np.array(modality6)[test_id]
 
 
-def WESAD_10fold_cv(modality1, modality2, modality3, modality4, modality5, modality6, label, subjects):
-    unique_subjects = np.unique(subjects)
-    kf = KFold(n_splits=10, shuffle=True, random_state=42)
+    id_train = np.arange(train_id.shape[0]).reshape(train_id.shape[0],1,1)
+    id_val = np.arange(val_id.shape[0]).reshape(val_id.shape[0],1,1)
+    id_test = np.arange(test_id.shape[0]).reshape(test_id.shape[0],1,1)
 
-    for fold_idx, (train_val_idx, test_idx) in enumerate(kf.split(unique_subjects)):
-        train_val_subjects = unique_subjects[train_val_idx]
-        test_subjects = unique_subjects[test_idx]
+    label_train = np.array(label)[train_id].reshape(train_id.shape[0],1,1)
+    label_val = np.array(label)[val_id].reshape(val_id.shape[0],1,1)
+    label_test = np.array(label)[test_id].reshape(test_id.shape[0],1,1)
+    print('array over'+ str(epoch))
+    pkl1 = {}
+    train = {}
+    test = {}
+    valid ={}
 
-        train_subjects, val_subjects = train_test_split(train_val_subjects, test_size=0.2, random_state=fold_idx)
+    train['id'] = id_train
+    train['modality1'] = modality1_train
+    train['modality2'] = modality2_train
+    train['modality3'] = modality3_train
+    train['modality4'] = modality4_train
+    train['modality5'] = modality5_train
+    train['modality6'] = modality6_train
+    train['label'] = label_train
+    
+    valid['id'] = id_val
+    valid['modality1'] = modality1_val
+    valid['modality2'] = modality2_val
+    valid['modality3'] = modality3_val
+    valid['modality4'] = modality4_val
+    valid['modality5'] = modality5_val
+    valid['modality6'] = modality6_val
+    valid['label'] = label_val
 
-        train_idx = [i for i, s in enumerate(subjects) if s in train_subjects]
-        val_idx = [i for i, s in enumerate(subjects) if s in val_subjects]
-        test_idx = [i for i, s in enumerate(subjects) if s in test_subjects]
+    test['id'] = id_test
+    test['modality1'] = modality1_test
+    test['modality2'] = modality2_test
+    test['modality3'] = modality3_test
+    test['modality4'] = modality4_test
+    test['modality5'] = modality5_test
+    test['modality6'] = modality6_test
+    test['label'] = label_test
 
-        pkl1 = open(f'fold_{fold_idx}_3_classes_subject_independent.pkl', 'wb')
-        pkl_make(modality1, modality2, modality3, modality4, modality5, modality6, label, train_idx, val_idx, test_idx, pkl1, fold_idx)
+    pkl1['train'] = train
+    pkl1['valid'] = valid
+    pkl1['test'] = test
 
-        print(f"Saved fold {fold_idx}: Train={len(train_idx)}, Val={len(val_idx)}, Test={len(test_idx)}")
+    pickle.dump(pkl1,pkl)
+    print('done'+ str(epoch))
+    return
+
+def WESAD (array,lenth,modality11,modality21,modality31,modality41, modality51,modality61,label1):
+    for i in range(1):
+        train1 = []
+        val_start = int(i*lenth/10)
+        val_end = test_start = int((i+1)*lenth/10)
+        test_end = int((i+2)*lenth/10)
+        final_test = int(0.1*lenth)
+        if i < 9:
+            val = array[val_start:val_end]
+            test = array[test_start:test_end]
+        else:
+            val = array[val_start:val_end]
+            test = array[:final_test]
+
+        for k in array:
+            if k not in np.append(val,test):
+                train1.append(k)
+        train = np.array(train1)
+        pkl1 = open(str(i)+'_3_classes.pkl','wb')
+        pkl_make(modality11,modality21,modality31,modality41,modality51,modality61,label1,train,val,test,pkl1,i)
+    return 
+
+
+
+
+def WESAD_merge(array, lenth, modality11, modality21, modality31, modality41, modality51, modality61, label1):
+    lenth = len(array)
+    
+    # Define split indices
+    train_end = int(0.8 * lenth)  # 80% for training
+    val_end = int(0.9 * lenth)    # Next 10% for validation
+    
+    # Split dataset
+    train = np.array(array[:train_end])
+    val = np.array(array[train_end:val_end])
+    test = np.array(array[val_end:])  # Last 10% for testing
+
+    # Save the merged dataset
+    pkl1 = open(str(i)+'merge_dataset.pkl','wb')
+    pkl_make(modality11, modality21, modality31, modality41, modality51, modality61, label1, train, val, test, pkl1, 0)
+
+    print(f"Dataset merged and split into Train: {len(train)}, Validation: {len(val)}, Test: {len(test)}. Saved as 'merged_dataset.pkl'.")
+    return
+
+
 
 
 if __name__ == '__main__':
-    with open('/content/drive/MyDrive/Multimodal/Husformer/WESAD_list.txt', 'r') as f:
-        pkl2 = pickle.load(f)
+    txt1 = open('/content/drive/MyDrive/Multimodal/Husformer/WESAD_list.txt','r').readlines()
+    modality11 = []
+    modality21 = []
+    modality31 = []
+    modality41 = []
+    modality51 = []
+    modality61 = []
+    label1 = []
 
-    modality1, modality2, modality3, modality4, modality5, modality6, label, subjects, _ = data_ready(pkl2)
-    WESAD_10fold_cv(modality1, modality2, modality3, modality4, modality5, modality6, label, subjects)
+    for i in txt1:
+        k = i.rstrip('\n')
+        print(k)
+        pkl1 = open(k,'rb')
+        pkl2 = pickle.load(pkl1,encoding = 'bytes')
+
+        modality12,modality22,modality32,modality42, modality52,modality62,label2,index2 = data_ready(pkl2)
+        modality11.extend(modality12)
+        modality21.extend(modality22)
+        modality31.extend(modality32)
+        modality41.extend(modality42)
+        modality51.extend(modality52)
+        modality61.extend(modality62)
+        label1.extend(label2)
+
+    indices = np.arange(len(modality11))
+    np.random.shuffle(indices)
+    WESAD_merge(indices,indices.shape[0],modality11,modality21,modality31,modality41,modality51,modality61,label1)
